@@ -1,3 +1,5 @@
+//kristan troy aguilar
+//simon andrew labay
 #include <iostream>
 #include <cstdlib> //for generating random numbers
 #include <time.h> //for generating seeds for the rng
@@ -19,7 +21,7 @@ void mainMain();
 void setPlayers(int numberOfPlayers, CnBplayer player[99]);
 void playGame(int numberOfPlayers, CnBplayer player[99]);
 bool compareCode(int enemyCode[4], int myCode[4]);
-bool inputCheck(int input);
+bool inputCheck(int input, bool isCPU, int inputLength);
 
 int main()
 {
@@ -152,11 +154,12 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                                         //that also means with the assignment to the numbercode proper is redundantly reused. will sort that out if i have the extra time.
             {
                 inputNumber = rand() % 9999 + 1; //creates the CPU's number code
-                cout << "\nplayer " << i << " is making their secret number...\n";
 
-                if (inputCheck(inputNumber) == true) //if input is valid
+                //cout << "\nplayer " << i << " is making their secret number...\n"; //temporarily removed so we dont get repeating outputs of this
+
+                if (inputCheck(inputNumber, true, to_string(inputNumber).size() ) == true) //if input is valid
                 {
-                    cout <<"...Done!\n";
+                    cout <<"...player " << i << " created a code!\n";
                     isInputting = false;
                 }
             }
@@ -179,7 +182,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                 cout << "\nplayer " << i << ", enter a 4 digit number for your secret code : ";
                 cin >> input;
 
-                if (inputCheck(stoi(input)) == true) //if input is valid
+                if (inputCheck(stoi(input), false, input.size() ) == true) //if input is valid
                 {
                     isInputting = false;
                 }
@@ -216,7 +219,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
 
 
-    //------------GAMEPLAY------------------
+    //-------------------------------------------------------GAMEPLAY--------------------------------------------------------
     //---------------
     int playerNumberToFight = 0; //for now, players will "fight" against the player one number below them, with it wrapping to the last player if they are player 0
 
@@ -237,16 +240,17 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                 isInputting = true;
                 while (isInputting == true) //im assuming the same input conditions apply to guessing as well
                 {
-                    cout << "\nplayer " << i << " guessing...\n";
+                    //cout << "\nplayer " << i << " guessing...\n"; //temporarily removed so we dont get repeating outputs of this
+
                     inputNumber = rand() % 9999 + 1; //generates random 4 number code if its a CPU
 
-                    if (inputCheck(inputNumber) == true)
+                    if (inputCheck(inputNumber, true, to_string(inputNumber).size()) == true)
                     {
                         isInputting = false;
                     }
                 }
 
-                cout << "computer guessed : " << inputNumber << "\n";
+                cout << "player " << i << " guessed : " << inputNumber << "\n";
             }
             else if (player[i].isCPU == false)
             {
@@ -256,7 +260,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                     cout << "\nplayer " << i << " : ";
                     cin >> input;
 
-                    if (inputCheck(stoi(input)) == true) //if input is valid
+                    if (inputCheck(stoi(input), false, input.size() ) == true) //if input is valid
                     {
                         isInputting = false;
                     }
@@ -340,7 +344,7 @@ bool compareCode(int enemyCode[4], int myCode[4])
 
 
     //output results
-    cout << "scored " << bulls << " Bull/s, and " << cows << " Cow/s. \n";
+    cout << "scored " << bulls << " Bull/s, and " << cows << " Cow/s. \n\n";
 
 
     if (bulls == 4)
@@ -357,21 +361,16 @@ bool compareCode(int enemyCode[4], int myCode[4])
 
 
 
-bool inputCheck(int input)
+bool inputCheck(int input, bool isCPU, int inputLength) //due to complications involving array decay, we find the length of the input BEFORE calling this function, and pass that value as a parameter. https://www.geeksforgeeks.org/5-different-methods-to-find-length-of-a-string-in-cpp/
 {
     //----------------------
     bool isInputValid = false;
-    int numberOfDigits = 0;
-    int inputLengthTestSubject = input; //cuz measuring the length of the input requires a number to be modified. this is here so that the original inout is safe.
     //----------------------
 
-    while (inputLengthTestSubject != 0)//check if the input number is too long or short : https://stackoverflow.com/a/22649020
-    {
-        numberOfDigits++;
-        inputLengthTestSubject /= 10;
-    }
 
-    if (numberOfDigits == 4) //if it passes that test, look for duplicates
+
+
+    if (inputLength == 4) //if it passes that test, look for duplicates
     {
         //---------------
         int inputArray[4];
@@ -392,7 +391,10 @@ bool inputCheck(int input)
             {
                 if (inputArray[i] == inputArray[j]) //if it finds an equal
                 {
-                    cout << "\nsimilar detected. " << inputArray[i] << " and " << inputArray[j] << "";
+                    if (isCPU == false)
+                    {
+                        cout << "\nsimilar detected. " << inputArray[i] << " and " << inputArray[j] << "";
+                    }
                     similarsDetected++; //i increment an int value for every similar number detected, instead of simply making "isinputValid = false" here,
                                         //since i dont wanna deal with having to end/break abuncha loops and somehow later decide whether its valid or not. this is the best way i can think of.
                 }
@@ -405,7 +407,10 @@ bool inputCheck(int input)
         }
         else
         {
-            cout << "\nmake sure all numbers in your code are different from one another.\n";
+            if (isCPU == false)
+            {
+                cout << "\nmake sure all numbers in your code are different from one another.\n";
+            }
             isInputValid = false;
         }
 
@@ -413,7 +418,10 @@ bool inputCheck(int input)
     }
     else
     {
-        cout << "\nnumber is an incorrect length! 4 digit numbers only.\n";
+        if (isCPU == false)
+        {
+            cout << "\nnumber is an incorrect length! 4 digit numbers only.\n";
+        }
         isInputValid = false;
     }
 
