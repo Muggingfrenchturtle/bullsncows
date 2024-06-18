@@ -21,7 +21,7 @@ void mainMain();
 void setPlayers(int numberOfPlayers, CnBplayer player[99]);
 void playGame(int numberOfPlayers, CnBplayer player[99]);
 bool compareCode(int enemyCode[4], int myCode[4]);
-bool inputCheck(int input, bool isCPU);
+bool inputCheck(int input, bool isCPU, int inputLength);
 
 int main()
 {
@@ -158,7 +158,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                 inputNumber = rand() % 9999 + 1; //creates the CPU's number code
                 //cout << "\nplayer " << i << " is making their secret number...\n"; //temporarily removed so we dont get repeating outputs of this
 
-                if (inputCheck(inputNumber, true) == true) //if input is valid
+                if (inputCheck(inputNumber, true, to_string(inputNumber).size() ) == true) //if input is valid
                 {
                     cout <<"...Done!\n";
                     isInputting = false;
@@ -183,7 +183,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                 cout << "\nplayer " << i << ", enter a 4 digit number for your secret code : ";
                 cin >> input;
 
-                if (inputCheck(stoi(input), false) == true) //if input is valid
+                if (inputCheck(stoi(input), false, input.size() ) == true) //if input is valid
                 {
                     isInputting = false;
                 }
@@ -220,7 +220,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
 
 
-    //------------GAMEPLAY------------------
+    //-------------------------------------------------------GAMEPLAY--------------------------------------------------------
     //---------------
     int playerNumberToFight = 0; //for now, players will "fight" against the player one number below them, with it wrapping to the last player if they are player 0
 
@@ -244,7 +244,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                     //cout << "\nplayer " << i << " guessing...\n"; //temporarily removed so we dont get repeating outputs of this
                     inputNumber = rand() % 9999 + 1; //generates random 4 number code if its a CPU
 
-                    if (inputCheck(inputNumber, true) == true)
+                    if (inputCheck(inputNumber, true, to_string(inputNumber).size()) == true)
                     {
                         isInputting = false;
                     }
@@ -260,7 +260,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                     cout << "\nplayer " << i << " : ";
                     cin >> input;
 
-                    if (inputCheck(stoi(input), false) == true) //if input is valid
+                    if (inputCheck(stoi(input), false, input.size() ) == true) //if input is valid
                     {
                         isInputting = false;
                     }
@@ -361,21 +361,16 @@ bool compareCode(int enemyCode[4], int myCode[4])
 
 
 
-bool inputCheck(int input, bool isCPU)
+bool inputCheck(int input, bool isCPU, int inputLength) //due to complications involving array decay, we find the length of the input BEFORE calling this function, and pass that value as a parameter. https://www.geeksforgeeks.org/5-different-methods-to-find-length-of-a-string-in-cpp/
 {
     //----------------------
     bool isInputValid = false;
-    int numberOfDigits = 0;
-    int inputLengthTestSubject = input; //cuz measuring the length of the input requires a number to be modified. this is here so that the original inout is safe.
     //----------------------
 
-    while (inputLengthTestSubject != 0)//check if the input number is too long or short : https://stackoverflow.com/a/22649020
-    {
-        numberOfDigits++;
-        inputLengthTestSubject /= 10;
-    }
 
-    if (numberOfDigits == 4) //if it passes that test, look for duplicates
+
+
+    if (inputLength == 4) //if it passes that test, look for duplicates
     {
         //---------------
         int inputArray[4];
