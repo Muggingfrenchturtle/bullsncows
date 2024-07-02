@@ -13,8 +13,20 @@ class CnBplayer
 {
     public :
         bool isCPU = true;
-        int CPUDifficulty = 1;
+        int CPUDifficulty = 2; //1 = easy, 2 = medium
         int numberCode[4] = {0,0,0,0};
+
+        int codeHistory[99]; //an array of numbercode, records will be made whenever the cpu guesses
+                            // if modifying this array in a function, with the object passed as a parameter, make sure to pass the object by reference to modify this.
+                            //also, this array may also include invalid inputs. currently this is only used so that medium CPUs dont guess the same thing twice, regardless of validity
+
+
+
+        CnBplayer()
+        {
+            fill_n(codeHistory,99,0); //fills the content of codehistory to 0 on object creation
+                                        //https://stackoverflow.com/questions/1065774/initialization-of-all-elements-of-an-array-to-one-default-value-in-c
+        }
 };
 
 void mainMain();
@@ -22,6 +34,8 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99]);
 void playGame(int numberOfPlayers, CnBplayer player[99]);
 bool compareCode(int enemyCode[4], int myCode[4]);
 bool inputCheck(int input, bool isCPU, int inputLength);
+int  cpuGuess(int cpuDifficulty, CnBplayer &cpu); //for some reason, we dont need to pass anything by reference for setplayers(), but we need to here, because we are modifying an array within the player class.
+                                                  //guess its fine to modify normal class members in functions, but if we wanna change arrays, we NEED to pass stuff by reference
 
 int main()
 {
@@ -54,6 +68,9 @@ int main()
 
     return 642024;
 }
+
+
+
 
 void mainMain()
 {
@@ -93,18 +110,33 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
     //-------------------------------------
     bool isSettingPlayers = true;
     string choose;
+    string choose2;
     //-------------------------------------
 
     while(isSettingPlayers == true)//ask which players are cpu
     {
 
-        for(int i = 0; i < numberOfPlayers; i++)//roll call players and their human status
+        for(int i = 0; i < numberOfPlayers; i++)//roll call players and their human status (loop through array)
         {
             cout << "\nplayer " << i;
 
             if (player[i].isCPU == true)
             {
-                cout << " (CPU) ";
+                cout << " (CPU) (";
+
+                switch(player[i].CPUDifficulty)
+                {
+                case 1 :
+                    {
+                        cout << "easy) ";
+                        break;
+                    }
+                case 2 :
+                    {
+                        cout << "medium) ";
+                        break;
+                    }
+                }
             }
             else
             {
@@ -112,7 +144,7 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
             }
         }
 
-        cout << "\n\n1 = start game \n2 = change a player to CPU/human\n";
+        cout << "\n\n1 = start game \n2 = change a player to CPU/human\n3 = change CPU difficulty\n";
         cin >> choose;
 
         if(stoi(choose) == 2)
@@ -121,6 +153,34 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
             cin >> choose;
 
             player[stoi(choose)].isCPU = !player[stoi(choose)].isCPU; //toggles the cpu status
+        }
+        else if (stoi(choose) == 3)
+        {
+            cout << "which CPU to change difficulty? (enter number) : ";
+            cin >> choose;
+
+            cout << "\nwhich difficulty? \n1 = easy \n2 = medium\n";
+            cin >> choose2;
+
+            switch (stoi(choose2)) //you cant use strings with switch statements
+            {
+                case 1 :
+                {
+                    player[stoi(choose)].CPUDifficulty = 1;
+                    break;
+                }
+                case 2 :
+                {
+                    player[stoi(choose)].CPUDifficulty = 2;
+                    break;
+                }
+                default :
+                {
+                    player[stoi(choose)].CPUDifficulty = 1;
+                    break;
+                }
+            }
+
         }
         else
         {
@@ -231,7 +291,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
     for (int turns = 0; turns < maxAttempts; turns++)
     {
 
-        cout << "\n-----------------TURN " << turns + 1 << "----------------------";
+        cout << "\n-----------------TURN " << turns + 1 << "----------------------\n";
 
         for(int i = 0; i < numberOfPlayers; i++) //goes through each player for the one turn
         {
@@ -242,10 +302,11 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
                 {
                     //cout << "\nplayer " << i << " guessing...\n"; //temporarily removed so we dont get repeating outputs of this
 
-                    inputNumber = rand() % 9999 + 1; //generates random 4 number code if its a CPU
+                    inputNumber = cpuGuess(player[i].CPUDifficulty, player[i]); //generates random 4 number code if its a CPU
 
-                    if (inputCheck(inputNumber, true, to_string(inputNumber).size()) == true)
+                    if (inputCheck(inputNumber, true, to_string(inputNumber).size()) == true) //if input is valid
                     {
+                        //add valid code to codeHistory, although we can pass arrays to functions to be read, we cant modify them. so we need to do it here.
                         isInputting = false;
                     }
                 }
@@ -357,6 +418,93 @@ bool compareCode(int enemyCode[4], int myCode[4])
     }
 
     return winner;
+}
+
+
+int cpuGuess(int cpuDifficulty, CnBplayer &cpu) //this will only be used in actual gameplay, not in code creation
+                                                //cpu is passed as reference so we can modify the coehistory array
+{
+    //-------------------
+    int intToReturn = 0;
+    bool isGuessing = true;
+
+    bool similarFound;
+    //-------------------
+
+    if (cpuDifficulty == 1) //easy
+    {
+        intToReturn = rand() % 9999 + 1; //normal rng
+    }
+    else if (cpuDifficulty == 2) //medium
+    {
+        while (isGuessing == true)
+        {
+            //normal rng but with no repeated guesses
+            intToReturn = rand() % 9999 + 1;
+
+            /*
+            cout << "debug. enter CPU guess : ";
+            cin >> intToReturn; //debug code. makes the player do the input for the CPU for testing repeated guesses.
+            */
+
+            similarFound = false;
+            //cout << "checking if " << intToReturn << " was guessed before.. \n";
+
+            //loop though code history, check to see if the guess has been made before
+            for (int i = 0; i < 99; i++) //uses the length of the codehistory array
+            {
+                if (intToReturn == cpu.codeHistory[i])
+                {
+                    //cout << "CPU guessed the same thing! " << intToReturn << " and " << cpu.codeHistory[i] << "\n";
+                    similarFound = true;
+                }
+            }
+
+
+            if (similarFound == false) //if it got through the above for loop without finding a similar, its valid. add the valid code to codehistory and end the while loop.
+            {
+                //cout << "valid guess \n";
+
+
+                //loop through the codehistory array and add to it
+                for (int i = 0; i < 99; i++) //uses the length of the codehistory array
+                {
+                    if (cpu.codeHistory[i] == 0) //once it finds an empty slot (0), add the valid input to the history
+                    {
+                        //cout << "empty slot found.s\n";
+
+                        cpu.codeHistory[i] = intToReturn;
+                                                          //i think this keeps "resetting" is because its not actually changing the array proper. (typical issues with arrays and functions)
+                                                          //although we can pass objects to functions and modify their values just fine, arrays are still a thingy.
+                                                          //
+                                                          //oookay, thats wierd, ive passed the object to this function as reference, and now its working as intended. (appending to the array)
+                                                          //not sure why i didnt need to do this for setplayers()
+
+                        i = 200; //ends the for loop via high value
+                    }
+                }
+
+                /*
+                cout << "debug, current codeHistory : ";
+                for (int i = 0; i < 99; i++) //uses the length of the codehistory array
+                {
+                    cout << cpu.codeHistory[i] << " ";
+                }
+                cout << "\n";
+                */
+
+                isGuessing = false; //end the while loop and return the valid int
+                                    //hmm, even if its set to false, it still does another loop for some reason
+                                    //wait, no. there is no problem getting out of the while loop. this can end up firing again due to invalid inputs, as we dont do inputchecking here.
+            }
+
+
+        }
+
+    }
+
+
+    return intToReturn; //the return value may not be valid. as inputchecking is done outside, in playgame(). meaning there is a good chance that this function will run multiple times.
 }
 
 
