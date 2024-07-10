@@ -5,7 +5,11 @@
 #include <time.h> //for generating seeds for the rng
                   //https://www.geeksforgeeks.org/rand-and-srand-in-ccpp/
                   //https://cplusplus.com/reference/cstdlib/rand/
+#include <fstream> //for replay recording and input from file
 
+//int recordSize = 999; //this global variable is used for the record array size. it scales with the amount of players. more players -> bigger array.
+                        //allowing recording of games with a lot of output.
+                        //nvm this method dosent work, this dosent work for the array sizes of the function parameters.
 using namespace std;
 
 
@@ -32,10 +36,13 @@ class CnBplayer
 void mainMain();
 void setPlayers(int numberOfPlayers, CnBplayer player[99]);
 void playGame(int numberOfPlayers, CnBplayer player[99]);
-bool compareCode(int enemyCode[4], int myCode[4]);
-bool inputCheck(int input, bool isCPU, int inputLength);
+bool compareCode(int enemyCode[4], int myCode[4], string record[999], int &recordIndex);
+bool inputCheck(int input, bool isCPU, int inputLength, string record[999], int &recordIndex); //the record and recordindex variables are there because this function calls coutwithrecord() and needs those two. same applies to comparecode() above.
 int  cpuGuess(int cpuDifficulty, CnBplayer &cpu); //for some reason, we dont need to pass anything by reference for setplayers(), but we need to here, because we are modifying an array within the player class.
                                                   //guess its fine to modify normal class members in functions, but if we wanna change arrays, we NEED to pass stuff by reference
+
+void coutWithRecord(string thingToCout, string record[999], int &recordIndex, bool printCout);//will be called in place of "cout <<" normally
+void saveReplay(string record[999]);//actual saving and writing of record to file
 
 int main()
 {
@@ -80,6 +87,7 @@ void mainMain()
     string choose;
     int numberOfPlayers = 0;
     //-------------------------------------
+
 
     cout << "\n\n ===================BULLS AND COWS===================\n";
     cout << "\nhow many players? : ";//ask how many players
@@ -191,7 +199,6 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
 
 void playGame(int numberOfPlayers, CnBplayer player[99])
 {
-    //----------------CODE CREATION----------------
     //-------------------------------------
     int maxAttempts = 7;
     string input; //direct user input
@@ -199,10 +206,17 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
     int inputNumberArray[4]; //for passing to the compareCode and inputCheck function
     bool isInputting = true; //for dealing with potential invalid inputs
     //bool inputLoop = true;
+
+    string record[999]; //for recording the game. all couts will get added to this array.
+    int recordIndex = 0;
+    bool isRecording = true;
     //-------------------------------------
 
-    cout << "\n---------------------GAME START-----------------------\n";
+    coutWithRecord("\n---------------------GAME START-----------------------\n",record,recordIndex, true);
+    //cout << "debug : " << record[0] << " : debug";
 
+
+    //----------------CODE CREATION----------------
     //loop through each player to search for CPUs, if a CPU, generate a random number
     //if not, ask human player to input their number code
     for(int i = 0; i < numberOfPlayers; i++)
@@ -217,9 +231,9 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
                 //cout << "\nplayer " << i << " is making their secret number...\n"; //temporarily removed so we dont get repeating outputs of this
 
-                if (inputCheck(inputNumber, true, to_string(inputNumber).size() ) == true) //if input is valid
+                if (inputCheck(inputNumber, true, to_string(inputNumber).size(), record, recordIndex) == true) //if input is valid
                 {
-                    cout <<"...player " << i << " created a code!\n";
+                    coutWithRecord("...player " + to_string(i) +  " created a code!\n",record,recordIndex, true);
                     isInputting = false;
                 }
             }
@@ -239,10 +253,11 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
             isInputting = true;
             while (isInputting == true)
             {
-                cout << "\nplayer " << i << ", enter a 4 digit number for your secret code : ";
+                coutWithRecord("\nplayer " + to_string(i) + ", enter a 4 digit number for your secret code : ",record,recordIndex, true);
                 cin >> input;
+                coutWithRecord(input + "\n", record, recordIndex, false); //see the comments in the function itself for info about this line
 
-                if (inputCheck(stoi(input), false, input.size() ) == true) //if input is valid
+                if (inputCheck(stoi(input), false, input.size(), record, recordIndex) == true) //if input is valid
                 {
                     isInputting = false;
                 }
@@ -265,16 +280,19 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
     }
 
 
-    cout << "\ndebug, number code menu for all players : \n";
-    for (int i = 0; i < numberOfPlayers; i++)
+    //cout << "\ndebug, number code menu for all players : \n";
+    coutWithRecord("\n+++++++++++++Secret Codes+++++++++++++\n", record, recordIndex, false);
+    for (int i = 0; i < numberOfPlayers; i++) //repurposed debug code, now records the secret codes without cout<< ing. change the bools to true to see the codes during gameplay.
     {
-        cout << "player " << i << " : ";
+        coutWithRecord("player " + to_string(i) + " : ", record, recordIndex, false);
+
         for(int j = 0; j < 4; j++)
         {
-            cout << player[i].numberCode[j];
+            coutWithRecord(to_string(player[i].numberCode[j]), record, recordIndex, false);
         }
-        cout << "\n";
+        coutWithRecord("\n", record, recordIndex, false);
     }
+    coutWithRecord("\n+++++++++++++++++++++++++++++++++++\n", record, recordIndex, false);
 
 
 
@@ -291,7 +309,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
     for (int turns = 0; turns < maxAttempts; turns++)
     {
 
-        cout << "\n-----------------TURN " << turns + 1 << "----------------------\n";
+        coutWithRecord("\n-----------------TURN " + to_string(turns + 1) + "----------------------\n", record, recordIndex, true);
 
         for(int i = 0; i < numberOfPlayers; i++) //goes through each player for the one turn
         {
@@ -304,24 +322,24 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
                     inputNumber = cpuGuess(player[i].CPUDifficulty, player[i]); //generates random 4 number code if its a CPU
 
-                    if (inputCheck(inputNumber, true, to_string(inputNumber).size()) == true) //if input is valid
+                    if (inputCheck(inputNumber, true, to_string(inputNumber).size(), record, recordIndex) == true) //if input is valid
                     {
-                        //add valid code to codeHistory, although we can pass arrays to functions to be read, we cant modify them. so we need to do it here.
                         isInputting = false;
                     }
                 }
 
-                cout << "player " << i << " guessed : " << inputNumber << "\n";
+                coutWithRecord("player " + to_string(i) + " guessed : " + to_string(inputNumber) + "\n", record, recordIndex, true);
             }
             else if (player[i].isCPU == false)
             {
                 isInputting = true;
                 while (isInputting == true)
                 {
-                    cout << "\nplayer " << i << " : ";
+                    coutWithRecord("\nplayer " + to_string(i) + " : ", record, recordIndex, true);
                     cin >> input;
+                    coutWithRecord(input + "\n", record, recordIndex, false);
 
-                    if (inputCheck(stoi(input), false, input.size() ) == true) //if input is valid
+                    if (inputCheck(stoi(input), false, input.size(), record, recordIndex ) == true) //if input is valid
                     {
                         isInputting = false;
                     }
@@ -349,11 +367,11 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
             }
 
 
-            didPlayerWin = compareCode(player[playerNumberToFight].numberCode, inputNumberArray); //compare input with the number code of the other guy
+            didPlayerWin = compareCode(player[playerNumberToFight].numberCode, inputNumberArray, record, recordIndex); //compare input with the number code of the other guy
 
             if (didPlayerWin == true)
             {
-                cout << "\n player " << i << " wins! \n";
+                coutWithRecord("\n player " + to_string(i) + " wins! \n", record, recordIndex, true);
                 turns += 9999; //gets out of the gameplay loop
                 break;
                 break; //these breaks prevent the next player from getting at turn after a winner happened
@@ -364,14 +382,29 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
     if (didPlayerWin == false)
     {
-        cout << "\n no one wins! \n"; //runs if the for loop ends without anyone winning
-
+        coutWithRecord("\n no one wins! \n",record,recordIndex, true); //runs if the for loop ends without anyone winning
     }
 
 
+    /*
+    cout << "debug. testing record contents. \n";
+    for (int i = 0; i < 999; i++)
+    {
+        cout << record[i];
+    }
+    cout << "\ndebug. testing record contents done. \n";
+    */
+    cout << "save replay of the game to a file? \n1 = yes \n2 = no \n";
+    cin >> input;
+
+    if (input == "1")
+    {
+        saveReplay(record);
+    }
+
 }
 
-bool compareCode(int enemyCode[4], int myCode[4])
+bool compareCode(int enemyCode[4], int myCode[4], string record[999], int &recordIndex)
 {
     //---------------
     int bulls = 0;
@@ -405,7 +438,7 @@ bool compareCode(int enemyCode[4], int myCode[4])
 
 
     //output results
-    cout << "scored " << bulls << " Bull/s, and " << cows << " Cow/s. \n\n";
+    coutWithRecord("scored " + to_string(bulls) + " Bull/s, and " + to_string(cows) + " Cow/s. \n\n", record, recordIndex, true);
 
 
     if (bulls == 4)
@@ -509,7 +542,7 @@ int cpuGuess(int cpuDifficulty, CnBplayer &cpu) //this will only be used in actu
 
 
 
-bool inputCheck(int input, bool isCPU, int inputLength) //due to complications involving array decay, we find the length of the input BEFORE calling this function, and pass that value as a parameter. https://www.geeksforgeeks.org/5-different-methods-to-find-length-of-a-string-in-cpp/
+bool inputCheck(int input, bool isCPU, int inputLength, string record[999], int &recordIndex) //due to complications involving array decay, we find the length of the input BEFORE calling this function, and pass that value as a parameter. https://www.geeksforgeeks.org/5-different-methods-to-find-length-of-a-string-in-cpp/
 {
     //----------------------
     bool isInputValid = false;
@@ -541,7 +574,7 @@ bool inputCheck(int input, bool isCPU, int inputLength) //due to complications i
                 {
                     if (isCPU == false)
                     {
-                        cout << "\nsimilar detected. " << inputArray[i] << " and " << inputArray[j] << "";
+                        coutWithRecord("\nsimilar detected. " + to_string(inputArray[i]) + " and " + to_string(inputArray[j]) + "",record,recordIndex,true);
                     }
                     similarsDetected++; //i increment an int value for every similar number detected, instead of simply making "isinputValid = false" here,
                                         //since i dont wanna deal with having to end/break abuncha loops and somehow later decide whether its valid or not. this is the best way i can think of.
@@ -557,7 +590,7 @@ bool inputCheck(int input, bool isCPU, int inputLength) //due to complications i
         {
             if (isCPU == false)
             {
-                cout << "\nmake sure all numbers in your code are different from one another.\n";
+                coutWithRecord("\nmake sure all numbers in your code are different from one another.\n",record,recordIndex,true);
             }
             isInputValid = false;
         }
@@ -568,7 +601,7 @@ bool inputCheck(int input, bool isCPU, int inputLength) //due to complications i
     {
         if (isCPU == false)
         {
-            cout << "\nnumber is an incorrect length! 4 digit numbers only.\n";
+            coutWithRecord("\nnumber is an incorrect length! 4 digit numbers only.\n",record,recordIndex,true);
         }
         isInputValid = false;
     }
@@ -576,4 +609,57 @@ bool inputCheck(int input, bool isCPU, int inputLength) //due to complications i
 
 
     return isInputValid;
+}
+
+
+
+void coutWithRecord(string thingToCout, string record[999], int &recordIndex, bool printCout) //only gets called in playgame()
+{
+    //about the use of this as a cout<< alternative,
+    //concatenating(?) strings and ints to each other is wierd. instead of {"hi" << "hello"}, you use {"hi" "hello"}. no + sign needed.
+    //HOWEVER, when brining in numbers to the mix, the above rule dosent apply. {"hi" 33 "hello"} or {"hi" to_string(33) "hello"} dosent work.
+    //what you NEED to do, is: {"hi" + to_string(33) + "hello"}.
+    //yes, you need to use + signs again.
+
+    //another thing, a limitation for this is that it cannot record user inputs. you need to call this after each user input.
+    //the call should look like this : coutwithrecord(inputvariable + "\n", record, recordindex, false)
+    // the "\n" is to emulate the act of the player pressing the enter key.
+
+    if (printCout == true)
+    {
+        cout << thingToCout;
+    }
+
+    record[recordIndex] = thingToCout;
+
+    recordIndex++;
+}
+
+void saveReplay(string record[999])
+{
+    //-------------------------
+    fstream fileWriter;
+    string filename = "";
+    //-------------------------
+
+    cout << "enter the filename (without a file extension like .txt) : ";
+    cin >> filename;
+
+    fileWriter.open(filename + ".txt", ios::out);
+
+    if (fileWriter.is_open())
+    {
+        for (int i = 0; i < 999; i++)
+        {
+            fileWriter << record[i]; //puts the record array into the file
+        }
+
+        cout << "\ndone!\n";
+    }
+    else
+    {
+        cout << "\nerror finding file!\n";
+    }
+
+    fileWriter.close();
 }
