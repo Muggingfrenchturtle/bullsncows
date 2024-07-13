@@ -24,6 +24,9 @@ class CnBplayer
                             // if modifying this array in a function, with the object passed as a parameter, make sure to pass the object by reference to modify this.
                             //also, this array may also include invalid inputs. currently this is only used so that medium CPUs dont guess the same thing twice, regardless of validity
 
+        bool isAutomatic = false; //if true, and is not cpu, do automatic inputs rather than manual
+        string autoGuessFilePath = "";
+        int numberOfLines = 0; //the number of lines in the auto input file. switch to manual when reaching the end
 
 
         CnBplayer()
@@ -43,6 +46,8 @@ int  cpuGuess(int cpuDifficulty, CnBplayer &cpu); //for some reason, we dont nee
 
 void coutWithRecord(string thingToCout, string record[999], int &recordIndex, bool printCout);//will be called in place of "cout <<" normally
 void saveReplay(string record[999]);//actual saving and writing of record to file
+
+string readAutoInput(string filePath, int turn);
 
 int main()
 {
@@ -119,6 +124,9 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
     bool isSettingPlayers = true;
     string choose;
     string choose2;
+    fstream fileChecker;
+    bool filecheckLoop = true;
+    string lineChecker;
     //-------------------------------------
 
     while(isSettingPlayers == true)//ask which players are cpu
@@ -150,9 +158,14 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
             {
                 cout << " (human) ";
             }
+
+            if (player[i].isAutomatic == true)
+            {
+                cout << " (auto file input) ";
+            }
         }
 
-        cout << "\n\n1 = start game \n2 = change a player to CPU/human\n3 = change CPU difficulty\n";
+        cout << "\n\n1 = start game \n2 = change a player to CPU/human \n3 = change CPU difficulty \n4 = change player to autoplay mode (guess from a .txt file) \n";
         cin >> choose;
 
         if(stoi(choose) == 2)
@@ -190,7 +203,41 @@ void setPlayers(int numberOfPlayers, CnBplayer player[99])  //keeping the player
             }
 
         }
-        else
+        else if (stoi(choose) == 4) //read inputs from file
+        {
+            cout << "which player to switch from manual/auto file guessing? (enter number) : ";
+            cin >> choose;
+
+            player[stoi(choose)].isAutomatic = !player[stoi(choose)].isAutomatic; //toggles the cpu status
+
+            while (filecheckLoop == true)
+            {
+                cout << "enter the filename (without a file extension like .txt) : ";
+                cin >> player[stoi(choose)].autoGuessFilePath;
+
+                //check if file exists
+                fileChecker.open(player[stoi(choose)].autoGuessFilePath + ".txt", ios::in);
+
+                if (fileChecker.is_open())
+                {
+                    filecheckLoop = false;
+                }
+                else
+                {
+                    cout << "cant find file!\n";
+                }
+            }
+
+
+            while (getline(fileChecker,lineChecker))//find # of lines
+            {
+                player[stoi(choose)].numberOfLines++;
+            }
+
+            fileChecker.close();
+
+        }
+        else //start game
         {
             isSettingPlayers = false;
         }
@@ -299,7 +346,7 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
     //-------------------------------------------------------GAMEPLAY--------------------------------------------------------
     //---------------
-    int playerNumberToFight = 0; //for now, players will "fight" against the player one number below them, with it wrapping to the last player if they are player 0
+    int playerNumberToFight = 0; //for now, players will "fight" against the player before them, with it wrapping to the last player if they are player 0
 
     bool didPlayerWin = false;
     //---------------
@@ -311,7 +358,8 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
         coutWithRecord("\n-----------------TURN " + to_string(turns + 1) + "----------------------\n", record, recordIndex, true);
 
-        for(int i = 0; i < numberOfPlayers; i++) //goes through each player for the one turn
+        //goes through each player for the one turn
+        for(int i = 0; i < numberOfPlayers; i++) //CPU player input
         {
             if (player[i].isCPU == true)
             {
@@ -330,26 +378,48 @@ void playGame(int numberOfPlayers, CnBplayer player[99])
 
                 coutWithRecord("player " + to_string(i) + " guessed : " + to_string(inputNumber) + "\n", record, recordIndex, true);
             }
-            else if (player[i].isCPU == false)
+            else if (player[i].isCPU == false) //human player input
             {
-                isInputting = true;
-                while (isInputting == true)
+                if (player[i].isAutomatic == false) //manual input
                 {
-                    coutWithRecord("\nplayer " + to_string(i) + " : ", record, recordIndex, true);
-                    cin >> input;
-                    coutWithRecord(input + "\n", record, recordIndex, false);
-
-                    if (inputCheck(stoi(input), false, input.size(), record, recordIndex ) == true) //if input is valid
+                    isInputting = true;
+                    while (isInputting == true)
                     {
-                        isInputting = false;
+                        coutWithRecord("\nplayer " + to_string(i) + " : ", record, recordIndex, true);
+                        cin >> input;
+                        coutWithRecord(input + "\n", record, recordIndex, false);
+
+                        if (inputCheck(stoi(input), false, input.size(), record, recordIndex ) == true) //if input is valid
+                        {
+                            isInputting = false;
+                        }
+                    }
+
+                    inputNumber = stoi(input);
+                }
+                else //if set to automatic file guessing
+                {
+                    input = readAutoInput(player[i].autoGuessFilePath, turns);
+
+                    coutWithRecord("\nplayer " + to_string(i) + " : " + input + " (auto input)\n", record, recordIndex, true);
+
+                    if (inputCheck(stoi(input), false, input.size(), record, recordIndex ) == false) //if input is valid
+                    {
+                        coutWithRecord("\nthe file guess is invalid, but instructions say to assume the file guesses are valid, so no error.\n", record, recordIndex, true);
+                    }
+
+                    player[i].numberOfLines--;
+
+                    if (player[i].numberOfLines == 0) //deactivates auto input once there are no lines
+                    {
+                        coutWithRecord("\nend of auto input file. switching back to manual input.\n", record, recordIndex, true);
+                        player[i].isAutomatic = false;
                     }
                 }
-
-                inputNumber = stoi(input);
             }
 
 
-            for(int j = 3; j > -1; j--) //transforms the number to an array for passing
+            for(int j = 3; j > -1; j--) //transforms the number to an array for passing to comparecode()
             {
                 inputNumberArray[j] = inputNumber % 10;
 
@@ -662,4 +732,39 @@ void saveReplay(string record[999])
     }
 
     fileWriter.close();
+}
+
+string readAutoInput(string filePath, int turn)
+{
+    //-------------------------
+    fstream fileReader;
+    int poorMansFor = 0;
+    string line = "";
+
+    string stringToReturn = "";
+    //-------------------------
+
+    fileReader.open(filePath + ".txt", ios::in);
+
+    if (fileReader.is_open())
+    {
+        while (poorMansFor != turn + 1) //the +1 is there to give some headspace so the loop dosent end AT the line aligned with the current turn
+        {
+            getline(fileReader,line);
+
+            if (poorMansFor == turn)
+            {
+                stringToReturn = line; //assigns the return value once you get to the approprite line for the turn
+            }
+
+            poorMansFor++;
+        }
+    }
+    else
+    {
+        cout << "\nerror finding file! filecheck should be done in setplayers()\n";
+    }
+
+    fileReader.close();
+    return stringToReturn;
 }
